@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <script src="http://code.jquery.com/jquery-latest.js"></script>
+    <script>
+
+        $(function(){
+            let token = window.localStorage.getItem("jwtToken");
+            if (token == null) {
+                return
+            };
+            let user = decodeURIComponent(escape(window.atob(token.split('.')[1])));
+            let userId = JSON.parse(user).UserId;
+            let expiresAt = JSON.parse(user).ExpiresAt;
+            document.getElementById("TitleToken").innerHTML = token;
+            document.getElementById("TitleExpiresAt").innerHTML = timeChange(expiresAt);
+            document.getElementById("TitleUserId").innerHTML = userId;
+        })
+
+        function timeChange(time) {
+            var date = new Date(time*1000);//时间戳为10位需*1000，时间戳为13位的话不需乘1000
+            var Y = date.getFullYear() + '-';
+            var M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+            var D = date.getDate() + ' ';
+            var h = date.getHours() + ':';
+            var m = date.getMinutes() < 10 ? '0'+date.getMinutes() + ':' : date.getMinutes() + ':';
+            var s = date.getSeconds();
+            return Y+M+D+h+m+s;
+        };
+
+        function login(){
+
+            let json = {};
+            json["user_id"] = Number($("#userId").val());
+            json["password"] = $("#password").val();
+            alert(JSON.stringify(json));
+            $.ajax({
+                url:'http://localhost:9090/user/login',
+                type:'POST',
+                dataType:'json',
+                contentType:'application/json;charset=UTF-8',
+                data:JSON.stringify(json),
+                success:function(rsp, status, xhr){
+                    alert("登录成功"+" "+status+" "+xhr.status);
+                    let user = decodeURIComponent(escape(window.atob(rsp["token"].split('.')[1])));
+                    let userId = JSON.parse(user).UserId;
+                    let expiresAt = JSON.parse(user).ExpiresAt;
+                    window.localStorage.setItem("jwtToken", rsp["token"]);
+                    document.getElementById("TitleExpiresAt").innerHTML = timeChange(expiresAt);
+                    document.getElementById("TitleUserId").innerHTML = userId;
+                    document.getElementById("TitleToken").innerHTML = rsp["token"];
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    alert("登录失败，请检查用户名和密码");
+                }
+            });
+        }
+
+        function logout() {
+            window.localStorage.removeItem('jwtToken');
+            document.getElementById("TitleExpiresAt").innerHTML = "";
+            document.getElementById("TitleUserId").innerHTML = "";
+        }
+
+        function info() {
+            let token = window.localStorage.getItem("jwtToken");
+            $.ajax({
+                url:'http://localhost:9090/user/info',
+                type:'GET',
+                headers: { "Authorization": JSON.parse(token), },
+                contentType:'application/json;charset=UTF-8',
+                data: "{}",
+                success:function(rsp, status, xhr){
+                    if (xhr.status == 201){
+                        window.localStorage.setItem("jwtToken", rsp["token"]);
+                        let user = decodeURIComponent(escape(window.atob(rsp["token"].split('.')[1])));
+                        let userId = JSON.parse(user).UserId;
+                        let expiresAt = JSON.parse(user).ExpiresAt;
+                        document.getElementById("TitleExpiresAt").innerHTML = timeChange(expiresAt);
+                        document.getElementById("TitleUserId").innerHTML = userId;
+                        document.getElementById("TitleToken").innerHTML = rsp["token"];
+                        info();
+                    }else {
+                        alert("info:"+rsp["user_id"]);
+                    }
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    alert("登录失败，请检查用户名和密码");
+                }
+            });
+        }
+    </script>
+</head>
+    <body>
+
+        <div>Token：<span id="TitleToken"></span></div>
+        <div>当前用户：<span id="TitleUserId"></span></div>
+        <div>过期时间：<span id="TitleExpiresAt"></span></div>
+        <div>采用过期后签发新的jwt策略，过期1天后需要重新登录</div>
+
+        <div>
+            <div>用户：<input type="text" id="userId"></div>
+            <div>密码：<input type="password" id="password"></div>
+            <button onclick="login()">登录</button>
+            <button onclick="logout()">登出</button>
+            <button onclick="info()">获取信息</button>
+        </div>
+
+        <div>
+            <div>用户：<input type="text"></div>
+            <div>密码：<input type="password"></div>
+            <button>注册</button>
+        </div>
+
+    </body>
+</html>
